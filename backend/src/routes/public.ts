@@ -3,7 +3,7 @@ import { ProductModel } from "../models/product";
 
 const router = express.Router();
 
-// Campos que NUNCA se exponen al público
+// Campos privados que NUNCA se exponen al público
 const PRIVATE_FIELDS =
   "-price -supplierName -supplierAddress -priceTransfer -imagePublicIds -reservedQty -reservedUntil -deletedAt";
 
@@ -61,20 +61,15 @@ router.get("/products", async (req, res) => {
       .limit(limitNum)
       .lean();
 
-    // Calcular stock disponible real (descontar reservas activas)
     const now = new Date();
-    const enriched = products.map((p: any) => {
+    const enriched = (products as any[]).map((p) => {
       const reservedActive =
         p.reservedUntil && new Date(p.reservedUntil) > now
           ? (p.reservedQty ?? 0)
           : 0;
-      const availableStock = Math.max(0, (p.stock ?? 0) - reservedActive);
       return {
         ...p,
-        availableStock,
-        // Limpiar campos de reserva del output (ya calculados)
-        reservedQty: undefined,
-        reservedUntil: undefined,
+        availableStock: Math.max(0, (p.stock ?? 0) - reservedActive),
       };
     });
 

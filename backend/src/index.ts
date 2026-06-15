@@ -11,7 +11,7 @@ import uploadRouter from "./routes/upload";
 import publicRouter from "./routes/public";
 import { initDb } from "./db";
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const app = express();
 
 app.use(cors());
@@ -20,7 +20,7 @@ app.use(express.json());
 // Rutas públicas — SIN autenticación JWT
 app.use("/api/public", publicRouter);
 
-// Rutas privadas — requieren JWT (el middleware de auth está en cada router)
+// Rutas privadas
 app.use("/api/auth", authRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/sales", salesRouter);
