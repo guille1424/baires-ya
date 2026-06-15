@@ -37,6 +37,8 @@ router.post("/import", upload.single("file"), async (req, res) => {
           priceNormal,
           priceTransfer,
           stock,
+          supplierName,
+          supplierAddress,
         } = row;
 
         if (!barcode || !name) {
@@ -62,6 +64,8 @@ router.post("/import", upload.single("file"), async (req, res) => {
           existing.priceNormal = Number(priceNormal) || 0;
           existing.priceTransfer = Number(priceTransfer) || 0;
           existing.stock = Number(stock) || 0; // Actualizar cantidad de stock
+          existing.supplierName = supplierName || "";
+          existing.supplierAddress = supplierAddress || "";
           existing.updatedAt = new Date();
           await existing.save();
           updated++;
@@ -79,6 +83,8 @@ router.post("/import", upload.single("file"), async (req, res) => {
             priceNormal: Number(priceNormal) || 0,
             priceTransfer: Number(priceTransfer) || 0,
             stock: Number(stock) || 0, // Asignar cantidad inicial de stock
+            supplierName: supplierName || "",
+            supplierAddress: supplierAddress || "",
           });
           created++;
         }

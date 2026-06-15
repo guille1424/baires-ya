@@ -26,6 +26,8 @@ export default function Import() {
         priceNormal: 10000,
         priceTransfer: 9000,
         stock: 15,
+        supplierName: "Proveedor Flores",
+        supplierAddress: "Av. Avellaneda 2900, CABA",
       },
       {
         barcode: "7501234567891",
@@ -37,6 +39,8 @@ export default function Import() {
         priceNormal: 17000,
         priceTransfer: 15300,
         stock: 8,
+        supplierName: "Distribuidores Once",
+        supplierAddress: "Paso 420, CABA",
       },
       {
         barcode: "7501234567892",
@@ -48,6 +52,8 @@ export default function Import() {
         priceNormal: 14400,
         priceTransfer: 12960,
         stock: 20,
+        supplierName: "Proveedor Flores",
+        supplierAddress: "Av. Avellaneda 2900, CABA",
       },
     ];
 
@@ -67,6 +73,8 @@ export default function Import() {
       { wch: 12 }, // priceNormal
       { wch: 12 }, // priceTransfer
       { wch: 10 }, // stock
+      { wch: 20 }, // supplierName
+      { wch: 25 }, // supplierAddress
     ];
     ws["!cols"] = colWidths;
 
@@ -284,6 +292,20 @@ export default function Import() {
                     Cantidad inicial de stock (número)
                   </td>
                   <td className="py-2">Sí</td>
+                </tr>
+                <tr>
+                  <td className="py-2 font-mono pr-2">supplierName</td>
+                  <td className="py-2 hidden sm:table-cell pr-2">
+                    Nombre del Proveedor o Tienda
+                  </td>
+                  <td className="py-2">No (Opcional)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 font-mono pr-2">supplierAddress</td>
+                  <td className="py-2 hidden sm:table-cell pr-2">
+                    Dirección del Proveedor o Local
+                  </td>
+                  <td className="py-2">No (Opcional)</td>
                 </tr>
               </tbody>
             </table>

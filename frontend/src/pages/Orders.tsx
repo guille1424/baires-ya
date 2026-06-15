@@ -55,6 +55,180 @@ export default function Orders() {
   });
   const { token } = useAuth();
 
+  // Estados para consolidación de compras
+  const [showConsolidationModal, setShowConsolidationModal] = useState(false);
+  const [consolidationList, setConsolidationList] = useState<any[]>([]);
+  const [consolidationLoading, setConsolidationLoading] = useState(false);
+
+  const fetchConsolidation = async () => {
+    setConsolidationLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/sales/consolidation", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      setConsolidationList(data);
+      setShowConsolidationModal(true);
+    } catch {
+      setAlertModal({
+        show: true,
+        message: "Error al cargar consolidación de compras",
+        type: "error",
+      });
+    } finally {
+      setConsolidationLoading(false);
+    }
+  };
+
+  const handlePrintConsolidation = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Por favor permite las ventanas emergentes para poder imprimir la lista de compras.");
+      return;
+    }
+
+    const grouped = consolidationList.reduce((groups: { [key: string]: any[] }, item) => {
+      const supplier = item.supplierName || "Sin Proveedor";
+      if (!groups[supplier]) {
+        groups[supplier] = [];
+      }
+      groups[supplier].push(item);
+      return groups;
+    }, {});
+
+    let contentHtml = "";
+    Object.keys(grouped).forEach((supplier) => {
+      const address = grouped[supplier][0].supplierAddress;
+      let tableRows = "";
+      grouped[supplier].forEach((item) => {
+        tableRows += `
+          <tr>
+            <td><strong>${item.name}</strong><br/><small>${item.barcode}</small></td>
+            <td>${item.size}</td>
+            <td>${item.color}</td>
+            <td class="qty">${item.quantity}</td>
+          </tr>
+        `;
+      });
+
+      contentHtml += `
+        <div class="supplier-section">
+          <div class="supplier-header">
+            <div class="supplier-name">${supplier.toUpperCase()}</div>
+            ${address ? `<div class="supplier-address">📍 ${address}</div>` : ""}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Prenda</th>
+                <th>Talle</th>
+                <th>Color</th>
+                <th>Cant.</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+
+    const dateStr = new Date().toLocaleDateString();
+    const timeStr = new Date().toLocaleTimeString();
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Lista de Compras Consolidada - BairesYa</title>
+          <style>
+            body {
+              font-family: system-ui, -apple-system, sans-serif;
+              margin: 20px;
+              color: #000;
+              background-color: #fff;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 3px double #000;
+              padding-bottom: 10px;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 24px;
+              letter-spacing: 2px;
+            }
+            .header p {
+              margin: 5px 0 0 0;
+              font-size: 12px;
+              color: #555;
+            }
+            .supplier-section {
+              margin-bottom: 30px;
+              page-break-inside: avoid;
+            }
+            .supplier-header {
+              background-color: #f2f2f2;
+              padding: 10px;
+              border: 1px solid #000;
+              margin-bottom: 10px;
+            }
+            .supplier-name {
+              font-size: 16px;
+              font-weight: 800;
+            }
+            .supplier-address {
+              font-size: 12px;
+              margin-top: 3px;
+              color: #444;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 10px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px;
+              text-align: left;
+              font-size: 13px;
+            }
+            th {
+              background-color: #fafafa;
+              font-weight: 700;
+            }
+            td.qty {
+              font-weight: 800;
+              text-align: center;
+              font-size: 14px;
+            }
+            @media print {
+              body {
+                margin: 10px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>BAIRESYA - LISTA DE COMPRAS</h1>
+            <p>Generado el ${dateStr} a las ${timeStr}</p>
+          </div>
+          ${contentHtml}
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   useEffect(() => {
     fetchOrders();
   }, [filter]);
@@ -301,7 +475,7 @@ export default function Orders() {
 
       {/* Filtros */}
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 p-4 mb-6">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setFilter("pending")}
             className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
@@ -331,6 +505,13 @@ export default function Orders() {
             }`}
           >
             📋 Todos
+          </button>
+          <button
+            onClick={fetchConsolidation}
+            disabled={consolidationLoading}
+            className="sm:ml-auto w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {consolidationLoading ? "⏳ Cargando..." : "🛍️ Lista de Compras"}
           </button>
         </div>
       </div>
@@ -462,6 +643,102 @@ export default function Orders() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal de Consolidación de Compras */}
+      {showConsolidationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-lg w-full border border-gray-200 dark:border-slate-700 animate-scale-in p-6">
+            <div className="flex justify-between items-center mb-4 border-b border-gray-100 dark:border-slate-700 pb-3">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                🛍️ Lista de Compras
+              </h3>
+              <button
+                onClick={() => handlePrintConsolidation()}
+                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors flex items-center gap-1"
+              >
+                🖨️ Imprimir
+              </button>
+            </div>
+
+            {(() => {
+              const grouped = consolidationList.reduce((groups: { [key: string]: any[] }, item) => {
+                const supplier = item.supplierName || "Sin Proveedor";
+                if (!groups[supplier]) {
+                  groups[supplier] = [];
+                }
+                groups[supplier].push(item);
+                return groups;
+              }, {});
+
+              const supplierKeys = Object.keys(grouped);
+
+              if (supplierKeys.length === 0) {
+                return (
+                  <p className="text-gray-500 dark:text-slate-400 py-8 text-center font-medium">
+                    No hay productos en pre-venta pendientes de compra.
+                  </p>
+                );
+              }
+
+              return (
+                <div className="space-y-4 text-left max-h-[60vh] overflow-y-auto pr-1">
+                  {supplierKeys.map((supplier) => (
+                    <div
+                      key={supplier}
+                      className="border border-gray-200 dark:border-slate-700 rounded-xl p-4 bg-gray-50 dark:bg-slate-900/40"
+                    >
+                      <div className="mb-2 border-b border-gray-200 dark:border-slate-700 pb-1 flex justify-between items-start gap-3">
+                        <div>
+                          <h4 className="font-extrabold text-sm text-indigo-600 dark:text-indigo-400">
+                            {supplier.toUpperCase()}
+                          </h4>
+                          {grouped[supplier][0].supplierAddress && (
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                              📍 {grouped[supplier][0].supplierAddress}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {grouped[supplier].map((item: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className="flex justify-between items-center text-sm border-b border-gray-100 dark:border-slate-800/40 pb-2 last:border-none last:pb-0"
+                          >
+                            <div>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {item.name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-slate-400">
+                                Talle: <span className="font-semibold text-gray-700 dark:text-slate-300">{item.size}</span> | Color: <span className="font-semibold text-gray-700 dark:text-slate-300">{item.color}</span>
+                              </p>
+                            </div>
+                            <span className="px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 rounded-full font-bold text-xs">
+                              Cant: {item.quantity}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            <div className="mt-6 pt-3 border-t border-gray-200 dark:border-slate-700">
+              <button
+                onClick={() => {
+                  setShowConsolidationModal(false);
+                  setConsolidationList([]);
+                }}
+                className="w-full px-4 py-2 bg-gray-300 dark:bg-slate-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-slate-500 transition-colors font-semibold"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

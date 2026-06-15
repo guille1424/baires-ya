@@ -264,6 +264,57 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// Obtener consolidación de compras (artículos pre-order en pedidos pendientes)
+router.get("/consolidation", async (req, res) => {
+  try {
+    // 1. Obtener todos los pedidos pendientes
+    const pendingSales = await SaleModel.find({ status: "pending" });
+
+    // 2. Extraer ítems con isPreOrder y acumular cantidades por código de barras
+    const preOrderQuantities: { [barcode: string]: number } = {};
+    for (const sale of pendingSales) {
+      for (const item of sale.items) {
+        if (item.isPreOrder && item.barcode) {
+          preOrderQuantities[item.barcode] = (preOrderQuantities[item.barcode] || 0) + item.quantity;
+        }
+      }
+    }
+
+    const barcodes = Object.keys(preOrderQuantities);
+    if (barcodes.length === 0) {
+      return res.json([]);
+    }
+
+    // 3. Buscar la información actual de los productos
+    const products = await ProductModel.find({
+      barcode: { $in: barcodes },
+      deletedAt: null,
+    });
+
+    // 4. Mapear y agrupar la información
+    const consolidationList = products
+      .map((product) => {
+        const quantity = preOrderQuantities[product.barcode] || 0;
+        return {
+          barcode: product.barcode,
+          name: product.name,
+          category: product.category || "",
+          size: product.size || "",
+          color: product.color || "",
+          supplierName: product.supplierName || "Sin Proveedor",
+          supplierAddress: product.supplierAddress || "",
+          quantity,
+        };
+      })
+      .filter((item) => item.quantity > 0);
+
+    res.json(consolidationList);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Error al generar consolidación" });
+  }
+});
+
 // Listar ventas/pedidos
 router.get("/", async (req, res) => {
   try {

@@ -12,6 +12,8 @@ export interface ProductDoc extends Document {
   priceNormal?: number; // Precio de venta normal
   priceTransfer?: number; // Precio con transferencia
   stock: number; // Cantidad de stock disponible
+  supplierName?: string; // Nombre del proveedor/tienda
+  supplierAddress?: string; // Dirección del proveedor/tienda
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -29,6 +31,8 @@ const ProductSchema = new Schema<ProductDoc>({
   priceNormal: { type: Number, default: 0 }, // Venta normal
   priceTransfer: { type: Number, default: 0 }, // Transferencia
   stock: { type: Number, default: 0 }, // Cantidad de stock
+  supplierName: { type: String, default: "" }, // Nombre del proveedor/tienda
+  supplierAddress: { type: String, default: "" }, // Dirección del proveedor/tienda
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date },
   deletedAt: { type: Date, default: null },

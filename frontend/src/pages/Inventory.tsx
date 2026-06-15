@@ -13,6 +13,8 @@ interface Product {
   priceNormal: number; // Venta normal
   priceTransfer: number; // Precio con transferencia
   stock: number; // Cantidad de stock
+  supplierName?: string;
+  supplierAddress?: string;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -41,6 +43,8 @@ export default function Inventory() {
     priceNormal: 0,
     priceTransfer: 0,
     stock: 0,
+    supplierName: "",
+    supplierAddress: "",
   });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -395,6 +399,8 @@ export default function Inventory() {
         priceNormal: product.priceNormal,
         priceTransfer: product.priceTransfer,
         stock: product.stock,
+        supplierName: product.supplierName || "",
+        supplierAddress: product.supplierAddress || "",
       });
     } else {
       resetForm();
@@ -414,6 +420,8 @@ export default function Inventory() {
       priceNormal: 0,
       priceTransfer: 0,
       stock: 0,
+      supplierName: "",
+      supplierAddress: "",
     });
   };
 
@@ -917,6 +925,43 @@ export default function Inventory() {
                     className="w-full px-3 sm:px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm sm:text-base"
                     required
                     step="0.01"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                    PROVEEDOR / TIENDA (OPCIONAL)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Nombre del proveedor"
+                    value={formData.supplierName}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        supplierName: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 sm:px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm sm:text-base"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                    DIRECCIÓN PROVEEDOR
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Dirección o local"
+                    value={formData.supplierAddress}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        supplierAddress: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 sm:px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm sm:text-base"
                   />
                 </div>
               </div>
