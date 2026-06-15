@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
+
+/* Estilos premium para el lector de códigos de barras html5-qrcode */
+#reader {
+  border: none !important;
+}
+
+#reader__scan_region {
+  background: #000;
+  border-radius: 0.75rem;
+}
+
+#reader img {
+  display: none !important;
+}
+
+#reader__dashboard {
+  padding: 1rem 0 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Botones del escáner */
+.html5-qrcode-element {
+  display: inline-block;
+  background-color: #4f46e5 !important; /* Indigo 600 */
+  color: white !important;
+  font-weight: 600;
+  padding: 0.5rem 1rem !important;
+  border-radius: 0.5rem !important;
+  border: none !important;
+  cursor: pointer;
+  margin: 0.5rem !important;
+  font-size: 0.875rem !important;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.html5-qrcode-element:hover {
+  background-color: #4338ca !important; /* Indigo 700 */
+}
+
+/* Selector de cámara */
+#reader select {
+  background-color: white !important;
+  border: 1px solid #d1d5db !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 0.5rem !important;
+  margin: 0.5rem !important;
+  font-size: 0.875rem !important;
+  color: #374151 !important;
+  outline: none;
+  cursor: pointer;
+}
+
+.dark #reader select {
+  background-color: #334155 !important; /* Slate 700 */
+  border-color: #475569 !important; /* Slate 600 */
+  color: #f1f5f9 !important; /* Slate 100 */
+}
+
+/* Enlace para cambiar tipo de escaneo (archivo vs cámara) */
+#reader__dashboard_section_swaplink {
+  color: #4f46e5 !important;
+  text-decoration: underline;
+  margin-left: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.dark #reader__dashboard_section_swaplink {
+  color: #818cf8 !important; /* Indigo 400 */
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes spin-and-invert-light {
+  0% {
+    transform: rotateY(0deg);
+    filter: invert(0);
+  }
+  50% {
+    transform: rotateY(180deg);
+    filter: invert(1);
+  }
+  100% {
+    transform: rotateY(360deg);
+    filter: invert(0);
+  }
+}
+
+@keyframes spin-and-invert-dark {
+  0% {
+    transform: rotateY(0deg);
+    filter: invert(1);
+  }
+  50% {
+    transform: rotateY(180deg);
+    filter: invert(0);
+  }
+  100% {
+    transform: rotateY(360deg);
+    filter: invert(1);
+  }
+}
+
+.animate-spin-invert {
+  animation: spin-and-invert-light 6s linear infinite;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.dark .animate-spin-invert {
+  animation: spin-and-invert-dark 6s linear infinite;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+
+
