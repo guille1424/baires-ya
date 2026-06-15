@@ -11,7 +11,9 @@ export interface SaleItem {
 }
 
 export interface SaleDoc extends Document {
-  customerName: string; // Nombre del comprador
+  customerId?: Types.ObjectId; // Referencia al cliente real
+  customerName: string; // Nombre del comprador (para compatibilidad)
+  customerPhone?: string; // Teléfono del comprador (para contacto directo)
   date: Date;
   totalAmount: number;
   items: SaleItem[];
@@ -34,7 +36,9 @@ const SaleItemSchema = new Schema<SaleItem>({
 });
 
 const SaleSchema = new Schema<SaleDoc>({
+  customerId: { type: Schema.Types.ObjectId, ref: "Customer" },
   customerName: { type: String, required: true },
+  customerPhone: { type: String },
   date: { type: Date, default: Date.now },
   totalAmount: { type: Number, required: true },
   items: [SaleItemSchema],

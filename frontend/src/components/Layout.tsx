@@ -18,6 +18,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: "/sales", label: "Nuevo Pedido", icon: "🛒" },
     { path: "/orders", label: "Gestión", icon: "📦" },
     { path: "/inventory", label: "Inventario", icon: "👕" },
+    { path: "/customers", label: "Clientes", icon: "👥" },
     { path: "/import", label: "Importar", icon: "📥" },
   ];
 

@@ -8,7 +8,7 @@ const router = express.Router();
 // Crear pedido (reserva productos, estado pending)
 router.post("/", async (req, res) => {
   try {
-    const { customerName, items } = req.body;
+    const { customerId, customerName, customerPhone, items } = req.body;
 
     if (!customerName || !customerName.trim()) {
       return res.status(400).json({ error: "customerName required" });
@@ -87,7 +87,9 @@ router.post("/", async (req, res) => {
 
     // Crear pedido con estado "pending"
     const sale = await SaleModel.create({
+      customerId: customerId || undefined,
       customerName,
+      customerPhone: customerPhone || undefined,
       date: new Date(),
       totalAmount,
       items: saleItems,

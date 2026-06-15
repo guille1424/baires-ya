@@ -12,7 +12,9 @@ interface OrderItem {
 
 interface Order {
   _id: string;
+  customerId?: string;
   customerName: string;
+  customerPhone?: string;
   date: string;
   totalAmount: number;
   items: OrderItem[];
@@ -372,6 +374,14 @@ export default function Orders() {
     );
   }
 
+  const getWhatsAppMessage = (order: Order) => {
+    const itemsText = order.items
+      .map((item) => `- ${item.name} (${item.quantity} prenda${item.quantity > 1 ? "s" : ""})`)
+      .join("\n");
+    const total = order.totalAmount % 1 === 0 ? order.totalAmount.toFixed(0) : order.totalAmount.toFixed(2);
+    return `¡Hola ${order.customerName}! Tu pedido de BairesYa está listo para retirar/entregar. 😊\n\nDetalle:\n${itemsText}\n\nTotal: $${total}\n¡Muchas gracias!`;
+  };
+
   return (
     <div>
       {/* Modal de Confirmación */}
@@ -545,10 +555,21 @@ export default function Orders() {
               <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                   <div>
-                    <div className="flex items-center gap-3 mb-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
                       <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                         {order.customerName}
                       </h3>
+                      {order.customerPhone && (
+                        <a
+                          href={`https://wa.me/${order.customerPhone}?text=${encodeURIComponent(getWhatsAppMessage(order))}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-bold text-xs flex items-center gap-1 shadow-sm"
+                          title="Enviar Mensaje por WhatsApp"
+                        >
+                          💬 WhatsApp (+{order.customerPhone})
+                        </a>
+                      )}
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           order.status === "pending"

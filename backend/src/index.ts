@@ -6,6 +6,9 @@ import authRouter from "./routes/auth";
 import salesRouter from "./routes/sales";
 import statsRouter from "./routes/stats";
 import importRouter from "./routes/import";
+import customersRouter from "./routes/customers";
+import uploadRouter from "./routes/upload";
+import publicRouter from "./routes/public";
 import { initDb } from "./db";
 
 const PORT = process.env.PORT || 3000;
@@ -14,10 +17,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Rutas públicas — SIN autenticación JWT
+app.use("/api/public", publicRouter);
+
+// Rutas privadas — requieren JWT (el middleware de auth está en cada router)
 app.use("/api/auth", authRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/sales", salesRouter);
 app.use("/api/stats", statsRouter);
+app.use("/api/customers", customersRouter);
+app.use("/api/upload", uploadRouter);
 app.use("/api", importRouter);
 
 app.get("/", (_req, res) =>

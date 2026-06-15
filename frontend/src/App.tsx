@@ -7,6 +7,7 @@ import Sales from "./pages/Sales";
 import Orders from "./pages/Orders";
 import Inventory from "./pages/Inventory";
 import Import from "./pages/Import";
+import Customers from "./pages/Customers";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -71,6 +72,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Import />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/customers"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Customers />
               </Layout>
             </ProtectedRoute>
           }

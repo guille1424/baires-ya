@@ -35,6 +35,12 @@ interface PendingOrder {
   date: string;
 }
 
+interface Customer {
+  _id: string;
+  name: string;
+  phone: string;
+}
+
 export default function Sales() {
   const [barcode, setBarcode] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -52,12 +58,35 @@ export default function Sales() {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const { token } = useAuth();
 
+  // Estados de clientes
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [selectedCustomerPhone, setSelectedCustomerPhone] = useState("");
+  const [showNewCustomerInputs, setShowNewCustomerInputs] = useState(false);
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+
   const [lastRemovedItem, setLastRemovedItem] = useState<{
     item: CartItem;
     index: number;
   } | null>(null);
   const [showUndoToast, setShowUndoToast] = useState(false);
   const undoTimeoutRef = useRef<number | null>(null);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/customers", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      setCustomers(data);
+    } catch (err) {
+      console.error("Error al cargar clientes:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -204,10 +233,13 @@ export default function Sales() {
 
   const handleBarcodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!barcode.trim()) return;
+    const code = barcode.trim();
+    if (!code) return;
 
-    await processBarcode(barcode);
+    // Limpiar el input INMEDIATAMENTE antes del fetch
     setBarcode("");
+
+    await processBarcode(code);
   };
 
   const toggleScanner = () => {
@@ -298,6 +330,18 @@ export default function Sales() {
     }, 0);
   };
 
+  const cleanPhoneNumber = (phone: string) => {
+    let clean = phone.replace(/\D/g, ""); // Eliminar no dígitos
+    if (clean.length === 10) {
+      clean = "549" + clean;
+    } else if (clean.length === 11 && clean.startsWith("15")) {
+      clean = "549" + clean.substring(2);
+    } else if (clean.length === 11 && clean.startsWith("9")) {
+      clean = "54" + clean;
+    }
+    return clean;
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) {
       setError("El carrito está vacío");
@@ -309,6 +353,11 @@ export default function Sales() {
       setError(
         "Debes ingresar el nombre del comprador o seleccionar un pedido existente"
       );
+      return;
+    }
+
+    if (!selectedOrderId && showNewCustomerInputs && !newCustomerPhone.trim()) {
+      setError("Debes ingresar el teléfono del nuevo cliente");
       return;
     }
 
@@ -337,6 +386,34 @@ export default function Sales() {
         customPrice: item.priceType === "custom" ? item.customPrice : undefined,
       }));
 
+      let finalCustomerId = selectedCustomerId || undefined;
+      let finalCustomerPhone = selectedCustomerPhone || undefined;
+      let finalCustomerName = customerName.trim();
+
+      if (!selectedOrderId && showNewCustomerInputs) {
+        const normalizedPhone = cleanPhoneNumber(newCustomerPhone);
+        if (!normalizedPhone) {
+          throw new Error("Por favor ingresa un número de teléfono válido para el nuevo cliente.");
+        }
+        // Crear cliente nuevo al vuelo
+        const customerRes = await fetch("http://localhost:5000/api/customers", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name: finalCustomerName, phone: normalizedPhone }),
+        });
+        if (!customerRes.ok) {
+          throw new Error("Error al registrar cliente nuevo");
+        }
+        const newCust = await customerRes.json();
+        finalCustomerId = newCust._id;
+        finalCustomerPhone = normalizedPhone;
+        // Refrescar lista de clientes
+        fetchCustomers();
+      }
+
       let response;
 
       if (selectedOrderId) {
@@ -360,7 +437,12 @@ export default function Sales() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ customerName: customerName.trim(), items }),
+          body: JSON.stringify({
+            customerId: finalCustomerId,
+            customerName: finalCustomerName,
+            customerPhone: finalCustomerPhone,
+            items,
+          }),
         });
       }
 
@@ -372,7 +454,7 @@ export default function Sales() {
       const targetName = selectedOrderId
         ? pendingOrders.find((o) => o._id === selectedOrderId)?.customerName ||
           "el cliente"
-        : customerName;
+        : finalCustomerName;
 
       const totalItemsQty = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -381,17 +463,30 @@ export default function Sales() {
           ? `¡Productos agregados al pedido de ${targetName}! ${totalItemsQty} ${
               totalItemsQty === 1 ? "prenda" : "prendas"
             } agregadas`
-          : `¡Pedido creado para ${customerName}! ${totalItemsQty} ${
+          : `¡Pedido creado para ${finalCustomerName}! ${totalItemsQty} ${
               totalItemsQty === 1 ? "prenda" : "prendas"
             } reservadas`
       );
       setCart([]);
       setCustomerName("");
       setSelectedOrderId("");
+      setSelectedCustomerId("");
+      setSelectedCustomerPhone("");
+      setNewCustomerPhone("");
+      setShowNewCustomerInputs(false);
       localStorage.removeItem("pendingCart");
 
       // Recargar pedidos pendientes
       fetchPendingOrders();
+
+      // Volver el foco al input de código de barras
+      setTimeout(() => {
+        const input = document.getElementById("barcode-input") as HTMLInputElement;
+        if (input) {
+          input.value = "";
+          input.focus();
+        }
+      }, 100);
 
       // Limpiar mensaje de éxito después de 3 segundos
       setTimeout(() => setSuccess(""), 3000);
@@ -406,6 +501,10 @@ export default function Sales() {
     setCart([]);
     setCustomerName("");
     setSelectedOrderId("");
+    setSelectedCustomerId("");
+    setSelectedCustomerPhone("");
+    setNewCustomerPhone("");
+    setShowNewCustomerInputs(false);
     setError("");
     setSuccess("");
   };
@@ -438,19 +537,87 @@ export default function Sales() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
-              Nuevo Pedido
+              Seleccionar Cliente
             </label>
-            <input
-              type="text"
-              value={customerName}
-              onChange={(e) => {
-                setCustomerName(e.target.value);
-                if (e.target.value) setSelectedOrderId("");
-              }}
-              placeholder="Nombre del cliente..."
-              disabled={!!selectedOrderId}
-              className="w-full px-4 py-3 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-            />
+            <div className="flex gap-2">
+              <select
+                value={selectedCustomerId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedCustomerId(id);
+                  if (id === "") {
+                    setCustomerName("");
+                    setSelectedCustomerPhone("");
+                    setShowNewCustomerInputs(false);
+                  } else {
+                    const cust = customers.find((c) => c._id === id);
+                    if (cust) {
+                      setCustomerName(cust.name);
+                      setSelectedCustomerPhone(cust.phone);
+                      setShowNewCustomerInputs(false);
+                    }
+                  }
+                  if (id) setSelectedOrderId("");
+                }}
+                disabled={!!selectedOrderId}
+                className="flex-1 px-4 py-3 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 text-sm sm:text-base"
+              >
+                <option value="">-- Seleccionar Cliente --</option>
+                {customers.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name} (+{c.phone})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewCustomerInputs(!showNewCustomerInputs);
+                  setSelectedCustomerId("");
+                  setCustomerName("");
+                  setSelectedCustomerPhone("");
+                }}
+                disabled={!!selectedOrderId}
+                className="px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 text-xs sm:text-sm whitespace-nowrap"
+              >
+                {showNewCustomerInputs ? "✕ Cancelar" : "➕ Nuevo Cliente"}
+              </button>
+            </div>
+
+            {showNewCustomerInputs && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 p-3 bg-gray-50 dark:bg-slate-900/40 rounded-xl border border-gray-100 dark:border-slate-700/60">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1 uppercase">
+                    Nombre del Cliente
+                  </label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => {
+                      setCustomerName(e.target.value);
+                      if (e.target.value) setSelectedOrderId("");
+                    }}
+                    placeholder="Ej: Juan Pérez"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 dark:text-slate-400 mb-1 uppercase">
+                    Teléfono (WhatsApp)
+                  </label>
+                  <input
+                    type="text"
+                    value={newCustomerPhone}
+                    onChange={(e) => {
+                      setNewCustomerPhone(e.target.value);
+                      if (e.target.value) setSelectedOrderId("");
+                    }}
+                    placeholder="Ej: 11 2233 4455"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-xs sm:text-sm font-mono"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
@@ -460,10 +627,16 @@ export default function Sales() {
               value={selectedOrderId}
               onChange={(e) => {
                 setSelectedOrderId(e.target.value);
-                if (e.target.value) setCustomerName("");
+                if (e.target.value) {
+                  setCustomerName("");
+                  setSelectedCustomerId("");
+                  setSelectedCustomerPhone("");
+                  setNewCustomerPhone("");
+                  setShowNewCustomerInputs(false);
+                }
               }}
-              disabled={!!customerName}
-              className="w-full px-4 py-3 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!!customerName || showNewCustomerInputs}
+              className="w-full px-4 py-3 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 text-sm sm:text-base"
             >
               <option value="">Seleccionar pedido...</option>
               {pendingOrders.map((order) => (

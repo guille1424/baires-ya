@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import JsBarcode from "jsbarcode";
 
@@ -15,6 +15,11 @@ interface Product {
   stock: number; // Cantidad de stock
   supplierName?: string;
   supplierAddress?: string;
+  // E-commerce
+  images?: string[];
+  imagePublicIds?: string[];
+  isPublic?: boolean;
+  publicDescription?: string;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -45,7 +50,17 @@ export default function Inventory() {
     stock: 0,
     supplierName: "",
     supplierAddress: "",
+    // E-commerce
+    isPublic: false,
+    publicDescription: "",
   });
+
+  // Estado para imágenes del producto (e-commerce)
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [productImagePublicIds, setProductImagePublicIds] = useState<string[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
@@ -55,10 +70,20 @@ export default function Inventory() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [qrProduct, setQrProduct] = useState<Product | null>(null);
 
+  // Estados de Paginación y Filtros de Servidor
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [filterOptions, setFilterOptions] = useState<{
+    categories: string[];
+    colors: string[];
+    sizes: string[];
+  }>({ categories: [], colors: [], sizes: [] });
+
   const { token } = useAuth();
 
-  const uniqueCategories = Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort();
-  const uniqueColors = Array.from(new Set(products.map((p) => p.color).filter(Boolean))).sort();
+  const uniqueCategories = filterOptions.categories;
+  const uniqueColors = filterOptions.colors;
 
 
   const formatPrice = (price: number) => {
@@ -188,152 +213,135 @@ export default function Inventory() {
       console.error("Error al generar código de barras para impresión:", err);
     }
   };
-
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  // Calcular opciones disponibles para cada filtro basándose en los filtros activos
-  const getAvailableOptions = () => {
-    let baseProducts = products;
-
-    // Aplicar filtro de búsqueda
-    if (search) {
-      baseProducts = baseProducts.filter(
-        (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.barcode.includes(search) ||
-          p.category.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    // Aplicar filtro de estado
-    if (statusFilter === "in_stock") {
-      baseProducts = baseProducts.filter((p) => p.stock > 0);
-    } else if (statusFilter === "out_of_stock") {
-      baseProducts = baseProducts.filter((p) => p.stock <= 0);
-    }
-
-    // Para categorías: aplicar filtros de color y talle si existen
-    let productsForCategories = baseProducts;
-    if (colorFilter) {
-      productsForCategories = productsForCategories.filter(
-        (p) => p.color === colorFilter
-      );
-    }
-    if (sizeFilter) {
-      productsForCategories = productsForCategories.filter(
-        (p) => p.size === sizeFilter
-      );
-    }
-    const availableCategories = [
-      ...new Set(productsForCategories.map((p) => p.category).filter(Boolean)),
-    ].sort();
-
-    // Para colores: aplicar filtros de categoría y talle si existen
-    let productsForColors = baseProducts;
-    if (categoryFilter) {
-      productsForColors = productsForColors.filter(
-        (p) => p.category === categoryFilter
-      );
-    }
-    if (sizeFilter) {
-      productsForColors = productsForColors.filter(
-        (p) => p.size === sizeFilter
-      );
-    }
-    const availableColors = [
-      ...new Set(productsForColors.map((p) => p.color).filter(Boolean)),
-    ].sort();
-
-    // Para talles: aplicar filtros de categoría y color si existen
-    let productsForSizes = baseProducts;
-    if (categoryFilter) {
-      productsForSizes = productsForSizes.filter(
-        (p) => p.category === categoryFilter
-      );
-    }
-    if (colorFilter) {
-      productsForSizes = productsForSizes.filter(
-        (p) => p.color === colorFilter
-      );
-    }
-    const availableSizes = [
-      ...new Set(productsForSizes.map((p) => p.size).filter(Boolean)),
-    ].sort();
-
-    return { availableCategories, availableColors, availableSizes };
-  };
-
-  const { availableCategories, availableColors, availableSizes } =
-    getAvailableOptions();
-
-  // Filtrar productos según todos los filtros activos
-  useEffect(() => {
-    let filtered = products;
-
-    // Filtrar por búsqueda
-    if (search) {
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.barcode.includes(search) ||
-          p.category.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    // Filtrar por estado
-    if (statusFilter === "in_stock") {
-      filtered = filtered.filter((p) => p.stock > 0);
-    } else if (statusFilter === "out_of_stock") {
-      filtered = filtered.filter((p) => p.stock <= 0);
-    }
-
-    // Filtrar por categoría
-    if (categoryFilter) {
-      filtered = filtered.filter((p) => p.category === categoryFilter);
-    }
-
-    // Filtrar por color
-    if (colorFilter) {
-      filtered = filtered.filter((p) => p.color === colorFilter);
-    }
-
-    // Filtrar por talle
-    if (sizeFilter) {
-      filtered = filtered.filter((p) => p.size === sizeFilter);
-    }
-
-    setFilteredProducts(filtered);
-  }, [search, statusFilter, categoryFilter, colorFilter, sizeFilter, products]);
-
-  const handleCategoryChange = (value: string) => {
-    setCategoryFilter(value);
-    // Si el color actual no existe en la nueva categoría, limpiarlo
-    // (Se manejará automáticamente por las opciones disponibles)
-  };
-
-  const handleColorChange = (value: string) => {
-    setColorFilter(value);
-    // Si el talle actual no existe con este color, se limpiará automáticamente
-  };
-
-  const fetchProducts = async () => {
+  const fetchFilterOptions = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/products", {
+      const response = await fetch("http://localhost:5000/api/products/filters", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
-      setProducts(data);
-      setFilteredProducts(data);
+      setFilterOptions({
+        categories: data.categories || [],
+        colors: data.colors || [],
+        sizes: data.sizes || [],
+      });
+    } catch (err) {
+      console.error("Error al cargar filtros:", err);
+    }
+  };
 
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: "50",
+        search,
+        category: categoryFilter,
+        color: colorFilter,
+        size: sizeFilter,
+        status: statusFilter,
+      });
 
+      const response = await fetch(`http://localhost:5000/api/products?${queryParams.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      setProducts(data.products || []);
+      setFilteredProducts(data.products || []);
+      setTotalPages(data.pages || 1);
+      setTotalProducts(data.total || 0);
     } catch (err) {
       console.error("Error al cargar productos:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchFilterOptions();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, categoryFilter, colorFilter, sizeFilter]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [page, search, statusFilter, categoryFilter, colorFilter, sizeFilter]);
+
+  const availableCategories = filterOptions.categories;
+  const availableColors = filterOptions.colors;
+  const availableSizes = filterOptions.sizes;
+
+  const handleCategoryChange = (value: string) => {
+    setCategoryFilter(value);
+  };
+
+  const handleColorChange = (value: string) => {
+    setColorFilter(value);
+  };
+
+
+  const handleImageUpload = async (file: File) => {
+    if (productImages.length >= 5) {
+      setUploadError("Máximo 5 imágenes por producto");
+      return;
+    }
+    setUploadingImage(true);
+    setUploadError("");
+    try {
+      // 1. Pedir firma al backend
+      const sigRes = await fetch("http://localhost:5000/api/upload/signature", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ folder: "bairesya/products" }),
+      });
+      const sig = await sigRes.json();
+
+      // 2. Subir directamente a Cloudinary
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("api_key", sig.apiKey);
+      fd.append("timestamp", sig.timestamp.toString());
+      fd.append("signature", sig.signature);
+      fd.append("folder", sig.folder);
+
+      const uploadRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`,
+        { method: "POST", body: fd }
+      );
+      if (!uploadRes.ok) throw new Error("Error al subir imagen");
+      const uploadData = await uploadRes.json();
+
+      setProductImages((prev) => [...prev, uploadData.secure_url]);
+      setProductImagePublicIds((prev) => [...prev, uploadData.public_id]);
+    } catch (err: any) {
+      setUploadError(err.message || "Error al subir imagen");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = async (idx: number) => {
+    const publicId = productImagePublicIds[idx];
+    // Si hay un ID de Cloudinary, borrar del servidor
+    if (publicId) {
+      try {
+        await fetch(`http://localhost:5000/api/upload/${encodeURIComponent(publicId)}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ productId: editingProduct?._id }),
+        });
+      } catch {}
+    }
+    setProductImages((prev) => prev.filter((_, i) => i !== idx));
+    setProductImagePublicIds((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -350,10 +358,15 @@ export default function Inventory() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          images: productImages,
+          imagePublicIds: productImagePublicIds,
+        }),
       });
 
       fetchProducts();
+      fetchFilterOptions();
       setShowModal(false);
       resetForm();
     } catch (err) {
@@ -374,6 +387,7 @@ export default function Inventory() {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchProducts();
+      fetchFilterOptions();
       setShowDeleteModal(false);
       setProductToDelete(null);
     } catch (err) {
@@ -401,10 +415,15 @@ export default function Inventory() {
         stock: product.stock,
         supplierName: product.supplierName || "",
         supplierAddress: product.supplierAddress || "",
+        isPublic: product.isPublic || false,
+        publicDescription: product.publicDescription || "",
       });
+      setProductImages(product.images || []);
+      setProductImagePublicIds(product.imagePublicIds || []);
     } else {
       resetForm();
     }
+    setUploadError("");
     setShowModal(true);
   };
 
@@ -422,7 +441,12 @@ export default function Inventory() {
       stock: 0,
       supplierName: "",
       supplierAddress: "",
+      isPublic: false,
+      publicDescription: "",
     });
+    setProductImages([]);
+    setProductImagePublicIds([]);
+    setUploadError("");
   };
 
   if (loading) {
@@ -559,11 +583,33 @@ export default function Inventory() {
                 key={product._id}
                 className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700 p-5 hover:shadow-xl transition-shadow"
               >
+                {/* Thumbnail de imagen si existe */}
+                {product.images && product.images.length > 0 && (
+                  <div className="relative mb-3 -mx-5 -mt-5 rounded-t-xl overflow-hidden h-36">
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                    {product.isPublic && (
+                      <span className="absolute top-2 right-2 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-full shadow">
+                        🌐 Público
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
-                      {product.name}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                        {product.name}
+                      </h3>
+                      {product.isPublic && !product.images?.length && (
+                        <span className="px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-bold rounded-full">
+                          🌐
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500 dark:text-slate-400 truncate">
                       {product.barcode}
                     </p>
@@ -749,6 +795,29 @@ export default function Inventory() {
           ))
         )}
       </div>
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-6 bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 shadow-lg">
+          <button
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+            disabled={page === 1}
+            className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50 font-semibold transition-all text-xs sm:text-sm border border-gray-200 dark:border-slate-600"
+          >
+            Anterior
+          </button>
+          <span className="text-gray-700 dark:text-slate-300 font-semibold text-xs sm:text-sm">
+            Página {page} de {totalPages} ({totalProducts} prendas)
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+            disabled={page === totalPages}
+            className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50 font-semibold transition-all text-xs sm:text-sm border border-gray-200 dark:border-slate-600"
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -964,6 +1033,112 @@ export default function Inventory() {
                     className="w-full px-3 sm:px-4 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm sm:text-base"
                   />
                 </div>
+              </div>
+
+              {/* ── SECCIÓN TIENDA PÚBLICA ── */}
+              <div className="border-t border-gray-200 dark:border-slate-700 pt-4 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800 dark:text-white">🌐 Tienda Pública</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Mostrar este producto en la tienda online</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      formData.isPublic ? "bg-green-500" : "bg-gray-300 dark:bg-slate-600"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        formData.isPublic ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {formData.isPublic && (
+                  <>
+                    <div className="mb-3">
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                        DESCRIPCIÓN PÚBLICA
+                      </label>
+                      <textarea
+                        placeholder="Descripción que verán los clientes en la tienda..."
+                        value={formData.publicDescription}
+                        onChange={(e) =>
+                          setFormData({ ...formData, publicDescription: e.target.value })
+                        }
+                        rows={2}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm resize-none"
+                      />
+                    </div>
+
+                    {/* Galería de imágenes */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-2">
+                        FOTOS DEL PRODUCTO ({productImages.length}/5)
+                      </label>
+                      <div className="grid grid-cols-3 gap-2 mb-2">
+                        {productImages.map((url, idx) => (
+                          <div key={idx} className="relative group aspect-square">
+                            <img
+                              src={url}
+                              alt={`Foto ${idx + 1}`}
+                              className="w-full h-full object-cover rounded-lg border border-gray-200 dark:border-slate-600"
+                            />
+                            {idx === 0 && (
+                              <span className="absolute top-1 left-1 px-1 py-0.5 bg-indigo-600 text-white text-[9px] font-bold rounded">
+                                PRINCIPAL
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx)}
+                              className="absolute top-1 right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        {productImages.length < 5 && (
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingImage}
+                            className="aspect-square border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg flex flex-col items-center justify-center text-gray-400 dark:text-slate-500 hover:border-indigo-400 hover:text-indigo-500 transition-colors disabled:opacity-50 text-xs gap-1"
+                          >
+                            {uploadingImage ? (
+                              <span className="animate-spin text-lg">⏳</span>
+                            ) : (
+                              <>
+                                <span className="text-2xl">📸</span>
+                                <span>Agregar</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(file);
+                          e.target.value = "";
+                        }}
+                      />
+                      {uploadError && (
+                        <p className="text-xs text-red-500 mt-1">{uploadError}</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        La primera foto será la imagen principal. Máx. 5 fotos.
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4">
 
