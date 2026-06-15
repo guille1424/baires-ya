@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import QRCode from "qrcode";
+import JsBarcode from "jsbarcode";
 
 interface Product {
   _id: string;
@@ -61,23 +61,38 @@ export default function Inventory() {
     return price % 1 === 0 ? price.toFixed(0) : price.toFixed(2);
   };
 
-  const handleShowQr = async (product: Product) => {
+  const handleShowQr = (product: Product) => {
     try {
-      const url = await QRCode.toDataURL(product.barcode, { width: 250, margin: 2 });
+      const canvas = document.createElement("canvas");
+      JsBarcode(canvas, product.barcode, {
+        format: "CODE128",
+        width: 2,
+        height: 60,
+        displayValue: true,
+        fontSize: 16,
+        margin: 10
+      });
+      const url = canvas.toDataURL("image/png");
       setQrCodeUrl(url);
       setQrProduct(product);
       setShowQrModal(true);
     } catch (err) {
-      console.error("Error al generar QR:", err);
+      console.error("Error al generar código de barras:", err);
     }
   };
 
   const handlePrintQr = (product: Product) => {
-    QRCode.toDataURL(product.barcode, { width: 200, margin: 1 }, (err, url) => {
-      if (err) {
-        console.error("Error al generar QR para impresión:", err);
-        return;
-      }
+    try {
+      const canvas = document.createElement("canvas");
+      JsBarcode(canvas, product.barcode, {
+        format: "CODE128",
+        width: 2,
+        height: 60,
+        displayValue: true,
+        fontSize: 16,
+        margin: 10
+      });
+      const url = canvas.toDataURL("image/png");
       const printWindow = window.open("", "_blank");
       if (!printWindow) {
         alert("Por favor permite las ventanas emergentes para poder imprimir la etiqueta.");
@@ -133,16 +148,10 @@ export default function Inventory() {
                 margin-bottom: 4px;
                 text-transform: uppercase;
               }
-              .qr-code {
-                width: 120px;
-                height: 120px;
-                margin: 2px 0;
-              }
-              .barcode-text {
-                font-size: 10px;
-                font-weight: 700;
-                font-family: monospace;
-                letter-spacing: 1px;
+              .barcode-img {
+                width: 240px;
+                height: auto;
+                margin: 6px 0;
               }
               .prices {
                 font-size: 11px;
@@ -156,8 +165,7 @@ export default function Inventory() {
             <div class="store-name">BAIRESYA</div>
             <div class="product-name">${product.name}</div>
             <div class="details">TALLE: ${product.size} | COLOR: ${product.color}</div>
-            <img class="qr-code" src="${url}" />
-            <div class="barcode-text">${product.barcode}</div>
+            <img class="barcode-img" src="${url}" />
             <div class="prices">
               EFECTIVO/CASH: $${formatPrice(product.priceNormal)}<br/>
               TRANSFERENCIA: $${formatPrice(product.priceTransfer)}
@@ -172,7 +180,9 @@ export default function Inventory() {
         </html>
       `);
       printWindow.document.close();
-    });
+    } catch (err) {
+      console.error("Error al generar código de barras para impresión:", err);
+    }
   };
 
 
@@ -617,10 +627,10 @@ export default function Inventory() {
                 <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-slate-700">
                   <button
                     onClick={() => handleShowQr(product)}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                    title="Ver Código QR"
+                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-1"
+                    title="Ver Código de Barras"
                   >
-                    📷 QR
+                    🏷️ Código
                   </button>
                   <button
                     onClick={() => openModal(product)}
@@ -709,10 +719,10 @@ export default function Inventory() {
               <div className="flex gap-2 pt-3 border-t border-gray-200 dark:border-slate-700">
                 <button
                   onClick={() => handleShowQr(product)}
-                  className="px-2 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                  title="Ver Código QR"
+                  className="px-2 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center justify-center gap-1"
+                  title="Ver Código de Barras"
                 >
-                  📷 QR
+                  🏷️ Código
                 </button>
                 <button
                   onClick={() => openModal(product)}
@@ -963,24 +973,24 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Modal para mostrar el Código QR */}
+      {/* Modal para mostrar el Código de Barras */}
       {showQrModal && qrProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-sm w-full border border-gray-200 dark:border-slate-700 text-center animate-scale-in">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-lg w-full border border-gray-200 dark:border-slate-700 text-center animate-scale-in">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 truncate">
-              Código QR: {qrProduct.name}
+              Código de Barras: {qrProduct.name}
             </h3>
             <p className="text-sm text-gray-500 dark:text-slate-400 mb-4 font-mono">
               {qrProduct.barcode}
             </p>
-            <div className="flex justify-center bg-white p-4 rounded-lg border border-gray-200 mb-4 max-w-[200px] mx-auto">
-              {qrCodeUrl && <img src={qrCodeUrl} alt="QR Code" className="w-full h-auto" />}
+            <div className="flex justify-center bg-white p-4 rounded-lg border border-gray-200 mb-4 mx-auto w-full">
+              {qrCodeUrl && <img src={qrCodeUrl} alt="Código de Barras" className="max-w-full h-auto object-contain" />}
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
                 <a
                   href={qrCodeUrl || ""}
-                  download={`qr_${qrProduct.barcode}.png`}
+                  download={`barcode_${qrProduct.barcode}.png`}
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold flex items-center justify-center gap-1"
                 >
                   <span>📥</span> Descargar
