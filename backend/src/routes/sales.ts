@@ -227,6 +227,66 @@ router.patch("/:id/deliver", async (req, res) => {
   }
 });
 
+// Aprobar Pedido Web
+router.patch("/:id/approve-web", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sale = await SaleModel.findById(id);
+    
+    if (!sale) return res.status(404).json({ error: "Pedido no encontrado" });
+    if (sale.status !== "web_pending") return res.status(400).json({ error: "Solo se pueden aprobar pedidos web_pending" });
+
+    // Descontar stock definitivo y limpiar reservas temporales
+    for (const item of sale.items) {
+      const product = await ProductModel.findById(item.productId);
+      if (product) {
+        if (!item.isPreOrder) {
+          product.stock = Math.max(0, (product.stock || 0) - item.quantity);
+        }
+        // Limpiar la reserva (o simplemente dejar que venza, pero es mejor limpiarla)
+        product.reservedQty = Math.max(0, (product.reservedQty || 0) - item.quantity);
+        await product.save();
+      }
+    }
+
+    sale.status = "pending"; // Pasa a estado "Pendiente de Entrega" igual que un pedido normal de POS
+    await sale.save();
+    
+    res.json(sale);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Error al aprobar pedido web" });
+  }
+});
+
+// Rechazar/Cancelar Pedido Web
+router.patch("/:id/reject-web", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sale = await SaleModel.findById(id);
+    
+    if (!sale) return res.status(404).json({ error: "Pedido no encontrado" });
+    if (sale.status !== "web_pending") return res.status(400).json({ error: "Solo se pueden rechazar pedidos web_pending" });
+
+    // Limpiar reservas temporales
+    for (const item of sale.items) {
+      const product = await ProductModel.findById(item.productId);
+      if (product) {
+        product.reservedQty = Math.max(0, (product.reservedQty || 0) - item.quantity);
+        await product.save();
+      }
+    }
+
+    sale.status = "cancelled";
+    await sale.save();
+    
+    res.json(sale);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Error al rechazar pedido web" });
+  }
+});
+
 // Cancelar pedido (devuelve productos reservados)
 router.delete("/:id", async (req, res) => {
   try {

@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 
 interface AuthContextType {
   token: string | null;
+  role: "admin" | "employee" | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -18,6 +19,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem("token");
   });
+
+  const getRoleFromToken = (t: string | null) => {
+    if (!t) return null;
+    try {
+      const payload = JSON.parse(atob(t.split('.')[1]));
+      return payload.role || "admin";
+    } catch {
+      return null;
+    }
+  };
+
+  const role = getRoleFromToken(token);
 
   const login = async (username: string, password: string) => {
     const response = await fetch("http://localhost:5000/api/auth/login", {
@@ -42,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, login, logout, isAuthenticated: !!token }}
+      value={{ token, role, login, logout, isAuthenticated: !!token }}
     >
       {children}
     </AuthContext.Provider>

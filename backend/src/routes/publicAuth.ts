@@ -2,6 +2,7 @@ import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { CustomerModel } from "../models/customer";
+import { SaleModel } from "../models/sale";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "default_jwt_secret";
@@ -107,6 +108,33 @@ router.get("/me", async (req, res) => {
     res.json(customer);
   } catch (err) {
     res.status(401).json({ error: "Token inválido o expirado." });
+  }
+});
+
+/**
+ * GET /api/public/auth/orders
+ * Obtiene el historial de pedidos del cliente logueado
+ */
+router.get("/orders", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: "No token provided" });
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+    if (decoded.role !== "customer") {
+      return res.status(403).json({ error: "Rol no válido." });
+    }
+
+    const orders = await SaleModel.find({ customerId: decoded.id, orderSource: "web" })
+      .sort({ date: -1 })
+      .lean();
+
+    res.json(orders);
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    res.status(500).json({ error: "Error interno al obtener pedidos." });
   }
 });
 

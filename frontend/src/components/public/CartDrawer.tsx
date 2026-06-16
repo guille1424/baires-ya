@@ -22,7 +22,10 @@ export default function CartDrawer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: items.map(i => ({ productId: i.productId, quantity: i.quantity }))
+          items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+          customerId: customer?._id || undefined,
+          customerName: customer?.name || "Invitado Web",
+          totalAmount: cartTotal
         })
       });
 

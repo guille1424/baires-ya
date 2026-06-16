@@ -17,7 +17,8 @@ export interface SaleDoc extends Document {
   date: Date;
   totalAmount: number;
   items: SaleItem[];
-  status: "pending" | "delivered"; // Estado del pedido
+  orderSource?: "web" | "pos"; // Origen de la venta
+  status: "web_pending" | "approved" | "pending" | "delivered" | "cancelled"; // Estado del pedido
   deliveredAt?: Date; // Fecha de entrega
 }
 
@@ -42,7 +43,8 @@ const SaleSchema = new Schema<SaleDoc>({
   date: { type: Date, default: Date.now },
   totalAmount: { type: Number, required: true },
   items: [SaleItemSchema],
-  status: { type: String, enum: ["pending", "delivered"], default: "pending" },
+  orderSource: { type: String, enum: ["web", "pos"], default: "pos" },
+  status: { type: String, enum: ["web_pending", "approved", "pending", "delivered", "cancelled"], default: "pending" },
   deliveredAt: { type: Date },
 });
 

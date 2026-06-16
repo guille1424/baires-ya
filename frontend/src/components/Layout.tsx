@@ -10,11 +10,12 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, role } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { path: "/dashboard", label: "Dashboard", icon: "📊" },
+    ...(role === "admin" ? [{ path: "/dashboard", label: "Dashboard", icon: "📊" }] : []),
+    { path: "/web-orders", label: "Pedidos Web", icon: "🌐" },
     { path: "/sales", label: "Nuevo Pedido", icon: "🛒" },
     { path: "/orders", label: "Gestión", icon: "📦" },
     { path: "/inventory", label: "Inventario", icon: "👕" },

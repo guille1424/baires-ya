@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Sales from "./pages/Sales";
 import Orders from "./pages/Orders";
+import WebOrders from "./pages/WebOrders";
 import Inventory from "./pages/Inventory";
 import Import from "./pages/Import";
 import Customers from "./pages/Customers";
@@ -20,8 +21,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, role } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (role !== "admin") return <Navigate to="/inventory" replace />;
+  return <>{children}</>;
+}
+
 function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
 
   return (
     <BrowserRouter>
@@ -78,9 +86,19 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <AdminRoute>
               <Layout>
                 <Dashboard />
+              </Layout>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/web-orders"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <WebOrders />
               </Layout>
             </ProtectedRoute>
           }

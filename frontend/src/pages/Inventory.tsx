@@ -77,7 +77,7 @@ export default function Inventory() {
     sizes: string[];
   }>({ categories: [], colors: [], sizes: [] });
 
-  const { token } = useAuth();
+  const { token, role } = useAuth();
 
   const uniqueCategories = filterOptions.categories;
   const uniqueColors = filterOptions.colors;
@@ -633,14 +633,16 @@ export default function Inventory() {
                       {product.color}
                     </p>
                   </div>
-                  <div>
-                    <span className="text-gray-500 dark:text-slate-400">
-                      Costo:
-                    </span>
-                    <p className="text-gray-900 dark:text-white font-medium">
-                      ${formatPrice(product.price)}
-                    </p>
-                  </div>
+                  {role === "admin" && (
+                    <div>
+                      <span className="text-gray-500 dark:text-slate-400">
+                        Costo:
+                      </span>
+                      <p className="text-gray-900 dark:text-white font-medium">
+                        ${formatPrice(product.price)}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="border-t border-gray-200 dark:border-slate-700 pt-3 mb-3">
                   <div className="grid grid-cols-2 gap-2 text-xs">
@@ -676,12 +678,14 @@ export default function Inventory() {
                   >
                     Editar
                   </button>
-                  <button
-                    onClick={() => handleDelete(product._id)}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                  >
-                    Eliminar
-                  </button>
+                  {role === "admin" && (
+                    <button
+                      onClick={() => handleDelete(product._id)}
+                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                    >
+                      Eliminar
+                    </button>
+                  )}
                 </div>
               </div>
             ))
@@ -728,14 +732,16 @@ export default function Inventory() {
                     {product.category}
                   </p>
                 </div>
-                <div>
-                  <span className="text-gray-500 dark:text-slate-400">
-                    Precio:
-                  </span>
-                  <p className="text-gray-900 dark:text-white font-medium">
-                    ${product.price}
-                  </p>
-                </div>
+                {role === "admin" && (
+                  <div>
+                    <span className="text-gray-500 dark:text-slate-400">
+                      Costo:
+                    </span>
+                    <p className="text-gray-900 dark:text-white font-medium">
+                      ${product.price}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <span className="text-gray-500 dark:text-slate-400">
                     Talle:
@@ -767,12 +773,14 @@ export default function Inventory() {
                 >
                   ✏️ Editar
                 </button>
-                <button
-                  onClick={() => handleDelete(product._id)}
-                  className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                >
-                  🗑️ Eliminar
-                </button>
+                {role === "admin" && (
+                  <button
+                    onClick={() => handleDelete(product._id)}
+                    className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                )}
               </div>
             </div>
           ))
