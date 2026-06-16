@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import JsBarcode from "jsbarcode";
 
@@ -18,6 +18,10 @@ interface Product {
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
+  isPublic?: boolean;
+  publicDescription?: string;
+  images?: string[];
+  imagePublicIds?: string[];
 }
 
 export default function Inventory() {
@@ -45,7 +49,15 @@ export default function Inventory() {
     stock: 0,
     supplierName: "",
     supplierAddress: "",
+    isPublic: false,
+    publicDescription: "",
   });
+
+  const [productImages, setProductImages] = useState<string[]>([]);
+  const [productImagePublicIds, setProductImagePublicIds] = useState<string[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
@@ -73,6 +85,79 @@ export default function Inventory() {
 
   const formatPrice = (price: number) => {
     return price % 1 === 0 ? price.toFixed(0) : price.toFixed(2);
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    setUploadingImage(true);
+    setUploadError("");
+
+    try {
+      const sigRes = await fetch("http://localhost:5000/api/upload/signature", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ folder: "bairesya/products" })
+      });
+      
+      if (!sigRes.ok) {
+        throw new Error("Error al obtener firma para subir imagen");
+      }
+      
+      const sigData = await sigRes.json();
+      
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+      formDataUpload.append("api_key", sigData.apiKey);
+      formDataUpload.append("timestamp", sigData.timestamp.toString());
+      formDataUpload.append("signature", sigData.signature);
+      formDataUpload.append("folder", sigData.folder);
+
+      const cloudinaryRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`,
+        {
+          method: "POST",
+          body: formDataUpload,
+        }
+      );
+
+      if (!cloudinaryRes.ok) {
+        throw new Error("Error de Cloudinary al subir imagen");
+      }
+
+      const cloudinaryData = await cloudinaryRes.json();
+      
+      setProductImages((prev) => [...prev, cloudinaryData.secure_url]);
+      setProductImagePublicIds((prev) => [...prev, cloudinaryData.public_id]);
+    } catch (err: any) {
+      console.error(err);
+      setUploadError(err.message || "Error al subir imagen");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = async (idx: number) => {
+    const publicId = productImagePublicIds[idx];
+    if (publicId) {
+      try {
+        await fetch("http://localhost:5000/api/upload/image", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ publicId, productId: editingProduct?._id })
+        });
+      } catch (err) {
+        console.error("Error al borrar imagen del servidor:", err);
+      }
+    }
+    
+    setProductImages((prev) => prev.filter((_, i) => i !== idx));
+    setProductImagePublicIds((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleShowQr = (product: Product) => {
@@ -281,7 +366,11 @@ export default function Inventory() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          images: productImages,
+          imagePublicIds: productImagePublicIds
+        }),
       });
 
       fetchProducts();
@@ -334,7 +423,11 @@ export default function Inventory() {
         stock: product.stock,
         supplierName: product.supplierName || "",
         supplierAddress: product.supplierAddress || "",
+        isPublic: product.isPublic || false,
+        publicDescription: product.publicDescription || "",
       });
+      setProductImages(product.images || []);
+      setProductImagePublicIds(product.imagePublicIds || []);
     } else {
       resetForm();
     }
@@ -355,7 +448,12 @@ export default function Inventory() {
       stock: 0,
       supplierName: "",
       supplierAddress: "",
+      isPublic: false,
+      publicDescription: "",
     });
+    setProductImages([]);
+    setProductImagePublicIds([]);
+    setUploadError("");
   };
 
   if (loading) {
@@ -919,6 +1017,113 @@ export default function Inventory() {
                   />
                 </div>
               </div>
+
+              {/* ── SECCIÓN TIENDA PÚBLICA ── */}
+              <div className="border-t border-gray-200 dark:border-slate-700 pt-4 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800 dark:text-white">🌐 Tienda Pública</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Mostrar este producto en la tienda online</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, isPublic: !formData.isPublic })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      formData.isPublic ? "bg-green-500" : "bg-gray-300 dark:bg-slate-600"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        formData.isPublic ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {formData.isPublic && (
+                  <>
+                    <div className="mb-3">
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                        DESCRIPCIÓN PÚBLICA
+                      </label>
+                      <textarea
+                        placeholder="Descripción que verán los clientes en la tienda..."
+                        value={formData.publicDescription}
+                        onChange={(e) =>
+                          setFormData({ ...formData, publicDescription: e.target.value })
+                        }
+                        rows={2}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm resize-none"
+                      />
+                    </div>
+
+                    {/* Galería de imágenes */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-2">
+                        FOTOS DEL PRODUCTO ({productImages.length}/5)
+                      </label>
+                      <div className="grid grid-cols-3 gap-2 mb-2">
+                        {productImages.map((url, idx) => (
+                          <div key={idx} className="relative group aspect-square">
+                            <img
+                              src={url}
+                              alt={`Foto ${idx + 1}`}
+                              className="w-full h-full object-cover rounded-lg border border-gray-200 dark:border-slate-600"
+                            />
+                            {idx === 0 && (
+                              <span className="absolute top-1 left-1 px-1 py-0.5 bg-indigo-600 text-white text-[9px] font-bold rounded">
+                                PRINCIPAL
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx)}
+                              className="absolute top-1 right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        {productImages.length < 5 && (
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingImage}
+                            className="aspect-square border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg flex flex-col items-center justify-center text-gray-400 dark:text-slate-500 hover:border-indigo-400 hover:text-indigo-500 transition-colors disabled:opacity-50 text-xs gap-1"
+                          >
+                            {uploadingImage ? (
+                              <span className="animate-spin text-lg">⏳</span>
+                            ) : (
+                              <>
+                                <span className="text-2xl">📸</span>
+                                <span>Agregar</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(file);
+                          e.target.value = "";
+                        }}
+                      />
+                      {uploadError && (
+                        <p className="text-xs text-red-500 mt-1">{uploadError}</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        La primera foto será la imagen principal. Máx. 5 fotos.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
               <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4">
 
                 <button

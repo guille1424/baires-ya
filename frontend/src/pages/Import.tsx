@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import * as XLSX from "xlsx";
 
 export default function Import() {
   const [isDragging, setIsDragging] = useState(false);
@@ -14,72 +13,13 @@ export default function Import() {
   const { token } = useAuth();
 
   const downloadTemplate = () => {
-    // Crear datos de ejemplo
-    const exampleData = [
-      {
-        barcode: "7501234567890",
-        name: "Remera Básica",
-        category: "Remera",
-        size: "M",
-        color: "Negro",
-        price: 5000,
-        priceNormal: 10000,
-        priceTransfer: 9000,
-        stock: 15,
-        supplierName: "Proveedor Flores",
-        supplierAddress: "Av. Avellaneda 2900, CABA",
-      },
-      {
-        barcode: "7501234567891",
-        name: "Jean Clásico",
-        category: "Pantalón",
-        size: "32",
-        color: "Azul",
-        price: 8500,
-        priceNormal: 17000,
-        priceTransfer: 15300,
-        stock: 8,
-        supplierName: "Distribuidores Once",
-        supplierAddress: "Paso 420, CABA",
-      },
-      {
-        barcode: "7501234567892",
-        name: "Buzo Deportivo",
-        category: "Buzo",
-        size: "L",
-        color: "Gris",
-        price: 7200,
-        priceNormal: 14400,
-        priceTransfer: 12960,
-        stock: 20,
-        supplierName: "Proveedor Flores",
-        supplierAddress: "Av. Avellaneda 2900, CABA",
-      },
-    ];
-
-    // Crear libro de Excel
-    const ws = XLSX.utils.json_to_sheet(exampleData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Productos");
-
-    // Ajustar ancho de columnas
-    const colWidths = [
-      { wch: 15 }, // barcode
-      { wch: 20 }, // name
-      { wch: 15 }, // category
-      { wch: 8 }, // size
-      { wch: 12 }, // color
-      { wch: 10 }, // price
-      { wch: 12 }, // priceNormal
-      { wch: 12 }, // priceTransfer
-      { wch: 10 }, // stock
-      { wch: 20 }, // supplierName
-      { wch: 25 }, // supplierAddress
-    ];
-    ws["!cols"] = colWidths;
-
-    // Descargar archivo
-    XLSX.writeFile(wb, "plantilla_productos.xlsx");
+    // Descargar la plantilla inteligente pre-generada que está en public/
+    const link = document.createElement("a");
+    link.href = "/Plantilla_Importacion.xlsx";
+    link.download = "Plantilla_Inteligente_Bairesya.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleFileSelect = async (file: File) => {

@@ -8,6 +8,12 @@ import Orders from "./pages/Orders";
 import Inventory from "./pages/Inventory";
 import Import from "./pages/Import";
 import Customers from "./pages/Customers";
+import StoreLayout from "./components/public/StoreLayout";
+import StoreHome from "./pages/public/StoreHome";
+import ProductDetail from "./pages/public/ProductDetail";
+import CustomerLogin from "./pages/public/CustomerLogin";
+import CustomerRegister from "./pages/public/CustomerRegister";
+import CustomerProfile from "./pages/public/CustomerProfile";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -20,6 +26,49 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Rutas Públicas (Tienda E-commerce) */}
+        <Route
+          path="/"
+          element={
+            <StoreLayout>
+              <StoreHome />
+            </StoreLayout>
+          }
+        />
+        <Route
+          path="/producto/:barcode"
+          element={
+            <StoreLayout>
+              <ProductDetail />
+            </StoreLayout>
+          }
+        />
+        <Route
+          path="/ingresar"
+          element={
+            <StoreLayout>
+              <CustomerLogin />
+            </StoreLayout>
+          }
+        />
+        <Route
+          path="/registro"
+          element={
+            <StoreLayout>
+              <CustomerRegister />
+            </StoreLayout>
+          }
+        />
+        <Route
+          path="/mi-cuenta"
+          element={
+            <StoreLayout>
+              <CustomerProfile />
+            </StoreLayout>
+          }
+        />
+
+        {/* Rutas de Administración */}
         <Route
           path="/login"
           element={
@@ -88,9 +137,7 @@ function App() {
         />
         <Route
           path="*"
-          element={
-            <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />
-          }
+          element={<Navigate to="/" replace />}
         />
       </Routes>
     </BrowserRouter>

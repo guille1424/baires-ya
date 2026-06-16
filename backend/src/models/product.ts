@@ -14,6 +14,12 @@ export interface ProductDoc extends Document {
   stock: number; // Cantidad de stock disponible
   supplierName?: string; // Nombre del proveedor/tienda
   supplierAddress?: string; // Dirección del proveedor/tienda
+  isPublic?: boolean;
+  publicDescription?: string;
+  images?: string[];
+  imagePublicIds?: string[];
+  reservedQty?: number;
+  reservedUntil?: Date;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -33,6 +39,12 @@ const ProductSchema = new Schema<ProductDoc>({
   stock: { type: Number, default: 0 }, // Cantidad de stock
   supplierName: { type: String, default: "" }, // Nombre del proveedor/tienda
   supplierAddress: { type: String, default: "" }, // Dirección del proveedor/tienda
+  isPublic: { type: Boolean, default: false },
+  publicDescription: { type: String, default: "" },
+  images: [{ type: String }],
+  imagePublicIds: [{ type: String }],
+  reservedQty: { type: Number, default: 0 },
+  reservedUntil: { type: Date },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date },
   deletedAt: { type: Date, default: null },

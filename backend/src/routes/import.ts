@@ -41,8 +41,13 @@ router.post("/import", upload.single("file"), async (req, res) => {
           supplierAddress,
         } = row;
 
+        // Si no hay barcode ni name, probablemente es una fila vacía con fórmulas del Excel. La ignoramos en silencio.
+        if (!barcode && !name) {
+          continue;
+        }
+
         if (!barcode || !name) {
-          errors.push(`Fila sin barcode o name: ${JSON.stringify(row)}`);
+          errors.push(`Fila incompleta (requiere barcode y name): ${JSON.stringify(row)}`);
           continue;
         }
 
