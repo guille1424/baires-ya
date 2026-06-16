@@ -34,13 +34,13 @@ export default function CartDrawer() {
 
       // 2. Si se reservó bien, armar el mensaje y redirigir
       let message = customer 
-        ? `Hola! Soy ${customer.name}, quiero realizar un pedido:\\n\\n`
-        : `Hola! Quiero realizar un pedido:\\n\\n`;
+        ? `Hola! Soy ${customer.name}, quiero realizar un pedido:\n\n`
+        : `Hola! Quiero realizar un pedido:\n\n`;
         
       items.forEach(item => {
-        message += `- ${item.quantity}x ${item.name} (Talle: ${item.size}, Color: ${item.color}) - $${item.price * item.quantity}\\n`;
+        message += `- ${item.quantity}x ${item.name} (Talle: ${item.size}, Color: ${item.color}) - $${item.price * item.quantity}\n`;
       });
-      message += `\\n*Total: $${cartTotal}*\\n\\nQuedo a la espera de confirmación.`;
+      message += `\n*Total: $${cartTotal}*\n\nQuedo a la espera de confirmación.`;
       
       const encodedMessage = encodeURIComponent(message);
       window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, "_blank");
